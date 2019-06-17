@@ -34,3 +34,4 @@
 # OpenPose Model and cmake dir
 models/
 cmake/
+build/

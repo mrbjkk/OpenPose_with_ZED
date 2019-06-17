@@ -178,7 +178,7 @@ int main(int argc, char **argv){
 	int new_width = image_size.width;
 	int new_height = image_size.height;
 
-	sl::Mat depth_image(new_width, new_height, MAT_TYPE_8U_C3);
+	sl::Mat depth_image(zed.getResolution(), MAT_TYPE_8U_C4);
 	cv::Mat depth_image_ocv = slMat2cvMat(depth_image);
 	sl::Mat point_cloud;
 	
@@ -197,6 +197,13 @@ int main(int argc, char **argv){
             // convert sl::Mat to cv::Mat. 
             // Note, image_ocv has 4-channel(see the slMat2cvMat function)
             auto image_ocv = slMat2cvMat(zed_image);
+
+            // show the original window
+            cv::imshow("origin", image_ocv);
+
+            // display depth
+            zed.retrieveImage(depth_image, VIEW_DEPTH);
+            cv::imshow("Depth", depth_image_ocv);
 
             // create a cv::Mat variable
             cv::Mat image_ocv_RGB;
