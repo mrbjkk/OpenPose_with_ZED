@@ -189,36 +189,44 @@ int main(int argc, char **argv){
     while( key != 'q' ) {
         if(zed.grab(runtime_param) == SUCCESS) {
             // create variable to retrieve image from zed camera
-            sl::Mat zed_image(new_width, new_height, MAT_TYPE_8U_C4);
-
+            sl::Mat zed_imagel(new_width, new_height, MAT_TYPE_8U_C4);
+            sl::Mat zed_imager(new_width, new_height, MAT_TYPE_8U_C4);
+            
             // retrieve the image
-            zed.retrieveImage(zed_image, VIEW_LEFT);
+            zed.retrieveImage(zed_imagel, VIEW_LEFT);
+            zed.retrieveImage(zed_imager, VIEW_RIGHT);
 
             // convert sl::Mat to cv::Mat. 
             // Note, image_ocv has 4-channel(see the slMat2cvMat function)
-            auto image_ocv = slMat2cvMat(zed_image);
+            auto image_ocvl = slMat2cvMat(zed_imagel);
+            auto image_ocvr = slMat2cvMat(zed_imager);
 
             // show the original window
-            cv::imshow("origin", image_ocv);
+            cv::imshow("origin", image_ocvl);
 
             // display depth
             zed.retrieveImage(depth_image, VIEW_DEPTH);
             cv::imshow("Depth", depth_image_ocv);
 
             // create a cv::Mat variable
-            cv::Mat image_ocv_RGB;
+            cv::Mat image_ocv_RGBl;
+            cv::Mat image_ocv_RGBr;
 
             // convert 4-channel to 3-channel, namely RGBA to RGB
-            cv::cvtColor(image_ocv, image_ocv_RGB, CV_RGBA2RGB);
+            cv::cvtColor(image_ocvl, image_ocv_RGBl, CV_RGBA2RGB);
+            cv::cvtColor(image_ocvr, image_ocv_RGBr, CV_RGBA2RGB);
 
             // process the 3-channel image by openpose
-            auto datumProcessed = opWrapper.emplaceAndPop(image_ocv_RGB);
+            auto datumProcessedl = opWrapper.emplaceAndPop(image_ocv_RGBl);
+            auto datumProcessedr = opWrapper.emplaceAndPop(image_ocv_RGBr);
 
             // print the key points
-            printKeypoints(datumProcessed);
+            printKeypoints(datumProcessedl);
 
             // Display the video
-            cv::imshow("image", datumProcessed->at(0)->cvOutputData);
+            cv::imshow("OpenPose_Left_view", datumProcessedl->at(0)->cvOutputData);
+            cv::imshow("OpenPose_Right_view", datumProcessedr->at(0)->cvOutputData);
+
             key = cv::waitKey(10);
             fc++;
             // std::cout<<"frame counter:"<<fc<<std::endl;
