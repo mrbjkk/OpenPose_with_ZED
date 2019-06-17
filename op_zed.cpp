@@ -184,9 +184,15 @@ int main(int argc, char **argv){
 
     // frame counter
     int fc = 0;
+    // set fps
+    double fps;
+    char string[10];
+//    cv::namedWindow("FPS");
+    double t = 0;
 
     char key = ' ';
     while( key != 'q' ) {
+        t = (double)cv::getTickCount();
         if(zed.grab(runtime_param) == SUCCESS) {
             // create variable to retrieve image from zed camera
             sl::Mat zed_imagel(new_width, new_height, MAT_TYPE_8U_C4);
@@ -202,6 +208,13 @@ int main(int argc, char **argv){
             auto image_ocvr = slMat2cvMat(zed_imager);
 
             // show the original window
+            t = ((double)cv::getTickCount() - t)/cv::getTickFrequency();
+            fps = 1.0 / t;
+            sprintf(string, "%.4f", fps);
+            std::string fpsString("FPS:");
+            fpsString += string;
+            cv::putText(image_ocvl, fpsString, cv::Point(5,20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,0,0));
+
             cv::imshow("origin", image_ocvl);
 
             // display depth
