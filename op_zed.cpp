@@ -4,11 +4,8 @@
 #include <typeinfo>
 // OpenPose dependencies
 #include <openpose/headers.hpp>
-
 // Custom OpenPose flags
 // Display
-DEFINE_bool(no_display,                 false,
-        "Enable to disable the visual display.");
 
 #include <sl/Camera.hpp>
 #include <opencv2/opencv.hpp>
@@ -16,7 +13,6 @@ using namespace sl;
 using namespace std;
 cv::Mat slMat2cvMat(Mat& input);
 
-DEFINE_string(image_dir, "examples/media/", "message");
 
 // This worker will just read and return all the jpg files in a directory
 void display(const std::shared_ptr<std::vector<std::shared_ptr<op::Datum>>>& datumsPtr)
