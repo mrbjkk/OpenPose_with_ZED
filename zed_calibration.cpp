@@ -4,54 +4,14 @@
 #include <typeinfo>
 // OpenPose dependencies
 #include <openpose/headers.hpp>
-// Custom OpenPose flags
-// Display
 
 #include <sl/Camera.hpp>
 #include <opencv2/opencv.hpp>
+
 using namespace sl;
 using namespace std;
+
 cv::Mat slMat2cvMat(Mat& input);
-
-
-// This worker will just read and return all the jpg files in a directory
-void display(const std::shared_ptr<std::vector<std::shared_ptr<op::Datum>>>& datumsPtr)
-{
-    try
-    {
-        // User's displaying/saving/other processing here
-        // datum.cvOutputData: rendered frame with pose or heatmaps
-        // datum.poseKeypoints: Array<float> with the estimated pose
-        if (datumsPtr != nullptr && !datumsPtr->empty())
-        {
-            // Display image
-            cv::imshow(OPEN_POSE_NAME_AND_VERSION + " - Tutorial C++ API", datumsPtr->at(0)->cvOutputData);
-            cv::waitKey(0);
-        }
-        else
-            op::log("Nullptr or empty datumsPtr found.", op::Priority::High);
-    }
-    catch (const std::exception& e)
-    {
-        op::error(e.what(), __LINE__, __FUNCTION__, __FILE__);
-    }
-}
-
-
-void printKeypoints(const std::shared_ptr<std::vector<std::shared_ptr<op::Datum>>>& datumsPtr)
-{
-    // Example: How to use the pose keypoints
-    if (datumsPtr != nullptr && !datumsPtr->empty())
-    {
-        op::log("Body keypoints: " + datumsPtr->at(0)->poseKeypoints.toString(), op::Priority::High);
-        op::log("Face keypoints: " + datumsPtr->at(0)->faceKeypoints.toString(), op::Priority::High);
-        op::log("Left hand keypoints: " + datumsPtr->at(0)->handKeypoints[0].toString(), op::Priority::High);
-        op::log("Right hand keypoints: " + datumsPtr->at(0)->handKeypoints[1].toString(), op::Priority::High);
-    }
-    else
-        op::log("Nullptr or empty datumsPtr found.", op::Priority::High);
-}
-
 
 void configureWrapper(op::Wrapper& opWrapper)
 {
@@ -133,10 +93,8 @@ void configureWrapper(op::Wrapper& opWrapper)
         opWrapper.disableMultiThreading();
 
 }
-
-
-int main(int argc, char **argv){
-
+int main(int argc, char **argv)
+{
     // Parsing command line flags
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -152,24 +110,19 @@ int main(int argc, char **argv){
     op::log("Starting thread(s)...", op::Priority::High);
     opWrapper.start();
 
-    // Configure Zed SDK
     sl::Camera zed;
     sl::InitParameters init_params;
     init_params.camera_resolution = RESOLUTION_VGA;
-    init_params.camera_fps = 60;
 
-    //Open the camera
     sl::ERROR_CODE err = zed.open(init_params);
-    if (err != SUCCESS){
-        std::cout<< toString(err)<<std::endl;
+    if (err != SUCCESS)
+    {
+        std::cout<< toString(err) <<std::endl;
         exit(-1);
     }
 
-
-    // Set runtime parameters after opening the camera
     sl::RuntimeParameters runtime_param;
     runtime_param.sensing_mode = SENSING_MODE_STANDARD;
-
     Resolution image_size = zed.getResolution();
     int new_width = image_size.width;
     int new_height = image_size.height;
@@ -180,71 +133,23 @@ int main(int argc, char **argv){
 
     // frame counter
     int fc = 0;
-    // set fps
-    double fps;
-    char string[10];
-//    cv::namedWindow("FPS");
-    double t = 0;
-
     char key = ' ';
-    while( key != 'q' ) {
-        t = (double)cv::getTickCount();
-        if(zed.grab(runtime_param) == SUCCESS) {
-            // create variable to retrieve image from zed camera
+    while( key != 'q')
+    {
+        if(zed.grab(runtime_param) == SUCCESS)
+        {
             sl::Mat zed_imagel(new_width, new_height, MAT_TYPE_8U_C4);
-            sl::Mat zed_imager(new_width, new_height, MAT_TYPE_8U_C4);
-            
-            // retrieve the image
             zed.retrieveImage(zed_imagel, VIEW_LEFT);
-            zed.retrieveImage(zed_imager, VIEW_RIGHT);
-
-            // convert sl::Mat to cv::Mat. 
-            // Note, image_ocv has 4-channel(see the slMat2cvMat function)
             auto image_ocvl = slMat2cvMat(zed_imagel);
-            auto image_ocvr = slMat2cvMat(zed_imager);
-
-            // show the original window
-            t = ((double)cv::getTickCount() - t)/cv::getTickFrequency();
-            fps = 1.0 / t;
-            sprintf(string, "%.4f", fps);
-            std::string fpsString("FPS:");
-            fpsString += string;
-            cv::putText(image_ocvl, fpsString, cv::Point(5,20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,0,0));
-
             cv::imshow("origin", image_ocvl);
-
-            // display depth
-            zed.retrieveImage(depth_image, VIEW_DEPTH);
-            cv::imshow("Depth", depth_image_ocv);
-
-            // create a cv::Mat variable
-            cv::Mat image_ocv_RGBl;
-            cv::Mat image_ocv_RGBr;
-
-            // convert 4-channel to 3-channel, namely RGBA to RGB
-            cv::cvtColor(image_ocvl, image_ocv_RGBl, CV_RGBA2RGB);
-            cv::cvtColor(image_ocvr, image_ocv_RGBr, CV_RGBA2RGB);
-
-            // process the 3-channel image by openpose
-            auto datumProcessedl = opWrapper.emplaceAndPop(image_ocv_RGBl);
-    //        auto datumProcessedr = opWrapper.emplaceAndPop(image_ocv_RGBr);
-
-            // print the key points
-            printKeypoints(datumProcessedl);
-
-            // Display the video
-            cv::imshow("OpenPose_Left_view", datumProcessedl->at(0)->cvOutputData);
-     //       cv::imshow("OpenPose_Right_view", datumProcessedr->at(0)->cvOutputData);
-
             key = cv::waitKey(10);
             fc++;
-            // std::cout<<"frame counter:"<<fc<<std::endl;
         }
-        else {
+        else 
+        {
             key = cv::waitKey(20);
         }
     }
-
     // Measuring total time
     op::printTime(opTimer, "OpenPose demo successfully finished. Total time: ", " seconds.", op::Priority::High);
     zed.close();
