@@ -226,15 +226,15 @@ int main(int argc, char **argv){
             cv::cvtColor(image_ocvr, image_ocv_RGBr, CV_RGBA2RGB);
 
             // process the 3-channel image by openpose
-            auto datumProcessedl = opWrapper.emplaceAndPop(image_ocv_RGBl);
-    //        auto datumProcessedr = opWrapper.emplaceAndPop(image_ocv_RGBr);
+     //       auto datumProcessedl = opWrapper.emplaceAndPop(image_ocv_RGBl);
+            auto datumProcessedr = opWrapper.emplaceAndPop(image_ocv_RGBr);
 
             // print the key points
-            printKeypoints(datumProcessedl);
+            printKeypoints(datumProcessedr);
 
             // Display the video
-            cv::imshow("OpenPose_Left_view", datumProcessedl->at(0)->cvOutputData);
-     //       cv::imshow("OpenPose_Right_view", datumProcessedr->at(0)->cvOutputData);
+      //      cv::imshow("OpenPose_Left_view", datumProcessedl->at(0)->cvOutputData);
+            cv::imshow("OpenPose_Right_view", datumProcessedr->at(0)->cvOutputData);
 
             key = cv::waitKey(10);
             fc++;

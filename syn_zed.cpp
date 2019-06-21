@@ -16,80 +16,26 @@
 DEFINE_string(image_dir, "/home/yurik/Pictures/", "test text");
 
 // This worker will just read and return all the basic image file formats in a directory
+
 class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::shared_ptr<op::Datum>>>>
 {
 public:
     WUserInput(std::vector<uint32_t> cam_ids, bool use3d)
-		: mUse3d(use3d)
+		: mUse3d(use3d),
+		  mParamReader(std::make_shared<op::CameraParameterReader>())
     {
     	for(const auto& cam_id : cam_ids) {
     		mCams.emplace_back(std::make_shared<op::WebcamReader>( cam_id ));
     	}
     	if (use3d) {
-            cv::Mat Py = cv::Mat::zeros(3,4,CV_8UC2);
-            Py.at<int>(0,0) = 1;
-            Py.at<int>(0,1) = 0;
-            Py.at<int>(0,2) = 0;
-            Py.at<int>(0,3) = 120;
-            Py.at<int>(1,0) = 0;
-            Py.at<int>(1,1) = 1;
-            Py.at<int>(1,2) = 0;
-            Py.at<int>(1,3) = 0;
-            Py.at<int>(2,0) = 0;
-            Py.at<int>(2,1) = 0;
-            Py.at<int>(2,2) = 1;
-            Py.at<int>(2,3) = 0;
-//    		mExtrinsics = mParamReader->getCameraExtrinsics();
-            mExtrinsics.push_back(py);
+    		mParamReader->readParameters(FLAGS_calibration_dir);
+    		mIntrinsics = mParamReader->getCameraIntrinsics();
+    		mExtrinsics = mParamReader->getCameraExtrinsics();
+    		mMatrices = mParamReader->getCameraMatrices();
     	}
     }
 
     void initializationOnThread() {}
-
-    std::vector<cv::Mat> getZEDIntrinsic()
-    {
-        sl::Camera zed;
-        sl::InitParameters init_params;
-        init_params.camera_resolution = RESOLUTION_VGA;
-        init_params.camera_fps = 60;
-        sl::ERROR_CODE err = zed.open(init_params);
-        if(err != SUCCESS) {
-            std::cout<<sl::toString(err)<<std::endl;
-            exit(-1);
-        }
-        auto lfocal_x = zed.getCameraInformation().calibration_parameters.left_cam.fx;
-        auto lfocal_y = zed.getCameraInformation().calibration_parameters.left_cam.fy;
-        auto lcenter_x = zed.getCameraInformation().calibration_parameters.left_cam.cx;
-        auto lcenter_y = zed.getCameraInformation().calibration_parameters.left_cam.cy;
-//        auto rfocal_x = zed.getCameraInformation().calibration_parameters.right_cam.fx;
-//        auto rfocal_y = zed.getCameraInformation().calibration_parameters.right_cam.fy;
-//        auto rcenter_x = zed.getCameraInformation().calibration_parameters.right_cam.cx;
-//        auto rcenter_y = zed.getCameraInformation().calibration_parameters.right_cam.cy;
-        cv::Mat Pw = cv::Mat::zeros(3,3,CV_32FC1);
-        Pw.at<float>(0,0) = lfocal_x;
-        Pw.at<float>(0,1) = 0.0;
-        Pw.at<float>(0,2) = lcenter_x;
-        Pw.at<float>(1,0) = 0.0;
-        Pw.at<float>(1,1) = lfocal_y;
-        Pw.at<float>(1,2) = lcenter_y;
-        Pw.at<float>(2,0) = 0.0;
-        Pw.at<float>(2,1) = 0.0;
-        Pw.at<float>(3,2) = 1.0;
-        mIntrinsicsl.push_back(Pw);
-        return mIntrinsicsl; 
-    }
-
-    cv::Mat getZEDframe(){
-        char key = ' ';
-        while( key != 'q')
-        {
-            if(zed.grab() == SUCCESS) 
-            {
-                zed.retrieveImage(zed_image, VIEW_LEFT);
-            }
-            return cv::Mat((int) zed_image.getHeight(), (int) zed_image.getWidth(), CV_8UC4, zed_image.getPtr<sl::uchar1>(sl::MEM_CPU));
-        }
-    }
 
     std::shared_ptr<std::vector<std::shared_ptr<op::Datum>>> workProducer()
     {
@@ -99,8 +45,8 @@ public:
         	if(mBlocked.empty()) {
 
 				for (size_t i = 0; i < mCams.size(); i++) {
-					// Create new datum
 					auto datumsPtr = std::make_shared<std::vector<std::shared_ptr<op::Datum>>>();
+					// Create new datum
 					datumsPtr->emplace_back();
 					auto& datum = datumsPtr->back();
 					datum = std::make_shared<op::Datum>();
@@ -141,15 +87,15 @@ public:
 
 private:
     bool mUse3d;
-    sl::Mat zed_image;
     std::shared_ptr<op::CameraParameterReader> mParamReader;
-    std::vector<cv::Mat> mIntrinsicsl;
+    std::vector<cv::Mat> mIntrinsics;
     std::vector<cv::Mat> mExtrinsics;
     std::vector<cv::Mat> mMatrices;
-//   std::vector<std::shared_ptr<op::WebcamReader>> mCams;
-//   std::queue<std::shared_ptr<std::vector<std::shared_ptr<op::Datum>>>> mBlocked;
-//   std::mutex lock;
+    std::vector<std::shared_ptr<op::WebcamReader>> mCams;
+    std::queue<std::shared_ptr<std::vector<std::shared_ptr<op::Datum>>>> mBlocked;
+    std::mutex lock;
 };
+
 
 void configureWrapper(op::Wrapper& opWrapper)
 {
