@@ -9,6 +9,8 @@
 
 #include <sl/Camera.hpp>
 #include <opencv2/opencv.hpp>
+
+#include <string.h>
 using namespace sl;
 using namespace std;
 cv::Mat slMat2cvMat(Mat& input);
@@ -226,15 +228,30 @@ int main(int argc, char **argv){
             cv::cvtColor(image_ocvr, image_ocv_RGBr, CV_RGBA2RGB);
 
             // process the 3-channel image by openpose
-     //       auto datumProcessedl = opWrapper.emplaceAndPop(image_ocv_RGBl);
-            auto datumProcessedr = opWrapper.emplaceAndPop(image_ocv_RGBr);
+            char* instr = argv[1];
+            if (strcmp(instr, "left") == 0)
+            {
+                auto datumProcessedl = opWrapper.emplaceAndPop(image_ocv_RGBl);
+                printKeypoints(datumProcessedl);
+                cv::imshow("OpenPose_Left_view", datumProcessedl->at(0)->cvOutputData);
+            }
 
-            // print the key points
-            printKeypoints(datumProcessedr);
-
-            // Display the video
-      //      cv::imshow("OpenPose_Left_view", datumProcessedl->at(0)->cvOutputData);
-            cv::imshow("OpenPose_Right_view", datumProcessedr->at(0)->cvOutputData);
+            else if (strcmp(instr, "right") == 0)
+            {
+                auto datumProcessedr = opWrapper.emplaceAndPop(image_ocv_RGBr);
+                printKeypoints(datumProcessedr);
+                cv::imshow("OpenPose_Right_view", datumProcessedr->at(0)->cvOutputData);
+            }
+//            auto datumProcessedl = opWrapper.emplaceAndPop(image_ocv_RGBl);
+////            auto datumProcessedr = opWrapper.emplaceAndPop(image_ocv_RGBr);
+//
+//            // print the key points
+//            printKeypoints(datumProcessedl);
+////            printKeypoints(datumProcessedr);
+//
+//            // Display the video
+//            cv::imshow("OpenPose_Left_view", datumProcessedl->at(0)->cvOutputData);
+////            cv::imshow("OpenPose_Right_view", datumProcessedr->at(0)->cvOutputData);
 
             key = cv::waitKey(10);
             fc++;
