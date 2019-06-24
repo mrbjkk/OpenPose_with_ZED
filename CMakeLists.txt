@@ -31,7 +31,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 
 #Create target
-add_executable(${PROJECT_NAME} "op_zed.cpp")
+add_executable(${PROJECT_NAME} "sync_zed.cpp")
 
 target_link_libraries(${PROJECT_NAME} ${CUDA_nppi_LIBRARY} ${CUDA_LIBRARIES} ${OpenPose_LIBS} ${GFLAGS_LIBRARY} ${GLOG_LIBRARY} ${ZED_LIBRARIES})
 

@@ -11,24 +11,48 @@
 // ZED SDK 
 #include <sl/Camera.hpp>
 #include <opencv2/opencv.hpp>
+using namespace sl;
 
-//    "Process a directory of images. Read all standard formats (jpg, png, bmp, etc.).");
-DEFINE_string(image_dir, "/home/yurik/Pictures/", "test text");
+cv::Mat slMat2cvMat(Mat& input) {
+    // Mapping between MAT_TYPE and CV_TYPE
+    int cv_type = -1;
+    switch (input.getDataType()) {
+        case MAT_TYPE_32F_C1: cv_type = CV_32FC1; break;
+        case MAT_TYPE_32F_C2: cv_type = CV_32FC2; break;
+        case MAT_TYPE_32F_C3: cv_type = CV_32FC3; break;
+        case MAT_TYPE_32F_C4: cv_type = CV_32FC4; break;
+        case MAT_TYPE_8U_C1: cv_type = CV_8UC1; break;
+        case MAT_TYPE_8U_C2: cv_type = CV_8UC2; break;
+        case MAT_TYPE_8U_C3: cv_type = CV_8UC3; break;
+        case MAT_TYPE_8U_C4: cv_type = CV_8UC4; break;
+        default: break;
+    }
+
+    // Since cv::Mat data requires a uchar* pointer, we get the uchar1 pointer from sl::Mat (getPtr<T>())
+    // cv::Mat and sl::Mat will share a single memory structure
+    return cv::Mat(input.getHeight(), input.getWidth(), cv_type, input.getPtr<sl::uchar1>(MEM_CPU));
+}
 
 // This worker will just read and return all the basic image file formats in a directory
-
 class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::shared_ptr<op::Datum>>>>
 {
     public:
-        WUserInput(std::vector<uint32_t> cam_ids, bool use3d)
-            : mUse3d(use3d),
-            mParamReader(std::make_shared<op::CameraParameterReader>())
+        WUserInput()
+            :  mParamReader(std::make_shared<op::CameraParameterReader>())
     {
+        init_params.camera_resolution = RESOLUTION_VGA;
+        init_params.camera_fps = 60;
+        sl::ERROR_CODE err = zed.open(init_params);
+        runtime_param.sensing_mode = SENSING_MODE_STANDARD;
+        sl::Resolution image_size = zed.getResolution();
+        new_width = image_size.width;
+        new_height = image_size.height;
+
+        cam_ids.push_back(0);
+        cam_ids.push_back(1);
         for(const auto& cam_id : cam_ids) {
             mCams.emplace_back(std::make_shared<op::WebcamReader>( cam_id ));
-        }
-        if (use3d) {
-            mParamReader->readParameters(FLAGS_calibration_dir);
+            mParamReader->readParameters("/home/yurik/Pictures/ZED_calibration/leftandright_califolder/");
             mIntrinsics = mParamReader->getCameraIntrinsics();
             mExtrinsics = mParamReader->getCameraExtrinsics();
             mMatrices = mParamReader->getCameraMatrices();
@@ -37,13 +61,39 @@ class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::sh
 
         void initializationOnThread() {}
 
+        cv::Mat getFrame(size_t camera_serial)
+        {
+            if (camera_serial == 0)
+            {
+                if(zed.grab(runtime_param) == SUCCESS)
+                {
+                    sl::Mat zed_imagel(new_width, new_height, MAT_TYPE_8U_C4);
+                    zed.retrieveImage(zed_imagel, VIEW_LEFT);
+                    auto image_ocvl = slMat2cvMat(zed_imagel);
+                    cv::Mat image_ocv_RGBl;
+                    cv::cvtColor(image_ocvl, image_ocv_RGBl, CV_RGBA2RGB);
+                    return image_ocv_RGBl;
+                }
+            }
+            else if(camera_serial == 1)
+            {
+                if(zed.grab(runtime_param) == SUCCESS)
+                {
+                    sl::Mat zed_imager(new_width, new_height, MAT_TYPE_8U_C4);
+                    zed.retrieveImage(zed_imager, VIEW_RIGHT);
+                    auto image_ocvr = slMat2cvMat(zed_imager);
+                    cv::Mat image_ocv_RGBr;
+                    cv::cvtColor(image_ocvr ,image_ocv_RGBr, CV_RGBA2RGB);
+                    return image_ocv_RGBr;
+                }
+            }
+        }
         std::shared_ptr<std::vector<std::shared_ptr<op::Datum>>> workProducer()
         {
             try
             {
-                std::lock_guard<std::mutex> g(lock);
+//                std::lock_guard<std::mutex> g(lock);
                 if(mBlocked.empty()) {
-
                     for (size_t i = 0; i < mCams.size(); i++) {
                         auto datumsPtr = std::make_shared<std::vector<std::shared_ptr<op::Datum>>>();
                         // Create new datum
@@ -52,15 +102,13 @@ class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::sh
                         datum = std::make_shared<op::Datum>();
 
                         // Fill datum
-                        datum->cvInputData = mCams[i]->getFrame();
+                        datum->cvInputData = getFrame(i);
                         datum->cvOutputData = datum->cvInputData;
-                        datum->subId = i;
-                        datum->subIdMax = mCams.size() - 1;
-                        if(mUse3d) {
-                            datum->cameraIntrinsics = mIntrinsics[i];
-                            datum->cameraExtrinsics = mExtrinsics[i];
-                            datum->cameraMatrix = mMatrices[i];
-                        }
+//                        datum->subId = i;
+//                        datum->subIdMax = mCams.size() - 1;
+                        datum->cameraIntrinsics = mIntrinsics[i];
+                        datum->cameraExtrinsics = mExtrinsics[i];
+                        datum->cameraMatrix = mMatrices[i];
 
                         // If empty frame -> return nullptr
                         if (datum->cvInputData.empty())
@@ -86,14 +134,20 @@ class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::sh
         }
 
     private:
-        bool mUse3d;
+//        bool mUse3d;
+        sl::Camera zed;
+        sl::InitParameters init_params;
+        sl::RuntimeParameters runtime_param;
+        int new_width;
+        int new_height;
         std::shared_ptr<op::CameraParameterReader> mParamReader;
         std::vector<cv::Mat> mIntrinsics;
         std::vector<cv::Mat> mExtrinsics;
         std::vector<cv::Mat> mMatrices;
         std::vector<std::shared_ptr<op::WebcamReader>> mCams;
         std::queue<std::shared_ptr<std::vector<std::shared_ptr<op::Datum>>>> mBlocked;
-        std::mutex lock;
+//        std::mutex lock;
+        std::vector<uint32_t> cam_ids;
 };
 
 
@@ -133,8 +187,9 @@ void configureWrapper(op::Wrapper& opWrapper)
                 FLAGS_heatmaps_add_PAFs);
         const auto heatMapScaleMode = op::flagsToHeatMapScaleMode(FLAGS_heatmaps_scale);
         // >1 camera view?
-        // const auto multipleView = (FLAGS_3d || FLAGS_3d_views > 1 || FLAGS_flir_camera);
-        const auto multipleView = false;
+//        const auto multipleView = (FLAGS_3d || FLAGS_3d_views > 1 || FLAGS_flir_camera);
+        const auto multipleView = (FLAGS_3d);
+        // const auto multipleView = false;
         // Face and hand detectors
         const auto faceDetector = op::flagsToDetector(FLAGS_face_detector);
         const auto handDetector = op::flagsToDetector(FLAGS_hand_detector);
@@ -143,7 +198,7 @@ void configureWrapper(op::Wrapper& opWrapper)
 
         // Initializing the user custom classes
         // Frames producer (e.g., video, webcam, ...)
-        auto wUserInput = std::make_shared<WUserInput>(FLAGS_image_dir);
+        auto wUserInput = std::make_shared<WUserInput>();
         // Add custom processing
         const auto workerInputOnNewThread = true;
         opWrapper.setWorker(op::WorkerType::Input, wUserInput, workerInputOnNewThread);
