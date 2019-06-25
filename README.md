@@ -1,7 +1,7 @@
 Extraction of human body and computation of human moving speed
-=======
+==============================================================
 
-##  implemented by [OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose) associated with [ZED camera](https://www.stereolabs.com/).
+##  Implemented by [OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose) associated with [ZED camera](https://www.stereolabs.com/).
 
 This project is to aquire video stream based on ZED camera processed by OpenPose framework.
 
