@@ -35,3 +35,5 @@
 models/
 cmake/
 build/
+
+testsync.cpp

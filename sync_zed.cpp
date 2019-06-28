@@ -26,21 +26,17 @@ class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::sh
 
             cam_ids.push_back(0);
             cam_ids.push_back(1);
+            cam_ids.push_back(2);
             for(const auto& cam_id : cam_ids) {
                 mCams.emplace_back(std::make_shared<op::WebcamReader>( cam_id ));
-                mParamReader->readParameters("/home/yurik/Pictures/ZED_calibration/leftandright_califolder/", {0,1});
-                mIntrinsics = mParamReader->getCameraIntrinsics();
-                mExtrinsics = mParamReader->getCameraExtrinsics();
-                mMatrices = mParamReader->getCameraMatrices();
             }
+            mParamReader->readParameters("/home/yurik/Pictures/ZED_calibration/leftandright_califolder/");
+            mIntrinsics = mParamReader->getCameraIntrinsics();
+            mExtrinsics = mParamReader->getCameraExtrinsics();
+            mMatrices = mParamReader->getCameraMatrices();
         }
 
         void initializationOnThread() {}
-
-        std::vector<cv::Mat> readintrinsic()
-        {
-            return mIntrinsics;
-        }
 
         cv::Mat getFrame(size_t camera_serial)
         {
@@ -75,7 +71,7 @@ class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::sh
             try
             {
                 if(mBlocked.empty()) {
-                    for (size_t i = 0; i < mCams.size(); i++) {
+                    for (size_t i = 0; i < 2; i++) {
                         auto datumsPtr = std::make_shared<std::vector<std::shared_ptr<op::Datum>>>();
                         // Create new datum
                         datumsPtr->emplace_back();
@@ -83,11 +79,11 @@ class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::sh
                         datum = std::make_shared<op::Datum>();
 
                         // Fill datum
-                        datum->cvInputData = getFrame(i);
+                        datum->cvInputData = this->getFrame(0);
                         datum->cvOutputData = datum->cvInputData;
-                        datum->cameraIntrinsics = mIntrinsics[i];
-                        datum->cameraExtrinsics = mExtrinsics[i];
-                        datum->cameraMatrix = mMatrices[i];
+                        datum->cameraIntrinsics = mIntrinsics[0];
+                        datum->cameraExtrinsics = mExtrinsics[0];
+                        datum->cameraMatrix = mMatrices[0];
 
                         // If empty frame -> return nullptr
                         if (datum->cvInputData.empty())
@@ -95,6 +91,7 @@ class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::sh
                             this->stop();
                             return nullptr;
                         }
+                        return datumsPtr;
                         mBlocked.push(datumsPtr);
                     }
                 }
@@ -126,14 +123,6 @@ class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::sh
         std::vector<uint32_t> cam_ids;
 };
 
-int main()
-{
-    auto input = std::make_shared<WUserInput>();
-    std::cout<<"type is "<<typeid(input).name()<<std::endl;
-}
-
-
-/* 
 void configureWrapper(op::Wrapper& opWrapper)
 {
     try
@@ -172,7 +161,7 @@ void configureWrapper(op::Wrapper& opWrapper)
         // >1 camera view?
 //        const auto multipleView = (FLAGS_3d || FLAGS_3d_views > 1 || FLAGS_flir_camera);
         const auto multipleView = (FLAGS_3d);
-        // const auto multipleView = false;
+//        const auto multipleView = false;
         // Face and hand detectors
         const auto faceDetector = op::flagsToDetector(FLAGS_face_detector);
         const auto handDetector = op::flagsToDetector(FLAGS_hand_detector);
@@ -269,7 +258,7 @@ int main(int argc, char *argv[])
     // Running tutorialApiCpp
     return tutorialApiCpp();
 }
-*/
+
 cv::Mat slMat2cvMat(Mat& input) {
     // Mapping between MAT_TYPE and CV_TYPE
     int cv_type = -1;

@@ -33,52 +33,135 @@ class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::sh
 
         void initializationOnThread() {}
 
-        cv::Mat getFrame()
+        cv::Mat getFrame(size_t camera_serial)
         {
-            if(zed.grab(runtime_param) == SUCCESS)
+            if (camera_serial == 0)
             {
-                sl::Mat zed_imagel(new_width, new_height, MAT_TYPE_8U_C4);
-                zed.retrieveImage(zed_imagel, VIEW_LEFT);
-                auto image_ocvl = slMat2cvMat(zed_imagel);
-                cv::Mat image_ocv_RGBl;
-                cv::cvtColor(image_ocvl, image_ocv_RGBl, CV_RGBA2RGB);
-                return image_ocv_RGBl;
+                if(zed.grab(runtime_param) == SUCCESS)
+                {
+                    sl::Mat zed_imagel(new_width, new_height, MAT_TYPE_8U_C4);
+                    zed.retrieveImage(zed_imagel, VIEW_LEFT);
+                    auto image_ocvl = slMat2cvMat(zed_imagel);
+                    cv::Mat image_ocv_RGBl;
+                    cv::cvtColor(image_ocvl, image_ocv_RGBl, CV_RGBA2RGB);
+                    return image_ocv_RGBl;
+                }
             }
-            zed.close();
+            else if(camera_serial == 1)
+            {
+                if(zed.grab(runtime_param) == SUCCESS)
+                {
+                    sl::Mat zed_imager(new_width, new_height, MAT_TYPE_8U_C4);
+                    zed.retrieveImage(zed_imager, VIEW_RIGHT);
+                    auto image_ocvr = slMat2cvMat(zed_imager);
+                    cv::Mat image_ocv_RGBr;
+                    cv::cvtColor(image_ocvr ,image_ocv_RGBr, CV_RGBA2RGB);
+                    return image_ocv_RGBr;
+                }
+            }
         }
+//        cv::Mat getFrame(size_t camera_serial)
+//        {
+//            if(zed.grab(runtime_param) == SUCCESS)
+//            {
+//                sl::Mat zed_imagel(new_width, new_height, MAT_TYPE_8U_C4);
+//                sl::Mat zed_imager(new_width, new_height, MAT_TYPE_8U_C4);
+//                zed.retrieveImage(zed_imagel, VIEW_LEFT);
+//                zed.retrieveImage(zed_imager, VIEW_RIGHT);
+//                auto image_ocvl = slMat2cvMat(zed_imagel);
+//                auto image_ocvr = slMat2cvMat(zed_imager);
+//                cv::Mat image_ocv_RGBl;
+//                cv::Mat image_ocv_RGBr;
+//                cv::cvtColor(image_ocvl, image_ocv_RGBl, CV_RGBA2RGB);
+//                cv::cvtColor(image_ocvr ,image_ocv_RGBr, CV_RGBA2RGB);
+//                if (camera_serial == 0)
+//                {
+//                    return image_ocv_RGBl;
+//                }
+//                if (camera_serial == 1)
+//                {
+//                    return image_ocv_RGBr;
+//                }
+//            }
+//        }
 
+//        std::shared_ptr<std::vector<std::shared_ptr<op::Datum>>> workProducer()
+//        {
+//            try
+//            {
+////                std::lock_guard<std::mutex> g(lock);
+//                if(mBlocked.empty()) {
+//
+//                    for (size_t i = 0; i < 2; i++) {
+//                        auto datumsPtr = std::make_shared<std::vector<std::shared_ptr<op::Datum>>>();
+//                        // Create new datum
+//                        datumsPtr->emplace_back();
+//                        auto& datum = datumsPtr->at(0);
+//                        datum = std::make_shared<op::Datum>();
+//
+//                        // Fill datum
+//                        datum->cvInputData = getFrame(i);
+//                        datum->cvOutputData = datum->cvInputData;
+//                        datum->subId = i;
+//                        datum->subIdMax = mCams.size() - 1;
+//                        datum->cameraIntrinsics = mIntrinsics[i];
+//                        datum->cameraExtrinsics = mExtrinsics[i];
+//                        datum->cameraMatrix = mMatrices[i];
+//
+//                        // If empty frame -> return nullptr
+//                        if (datum->cvInputData.empty())
+//                        {
+//                            this->stop();
+//                            return nullptr;
+//                        }
+//
+//                        mBlocked.push(datumsPtr);
+//                    }
+//                }
+//
+//                auto ret = mBlocked.front();
+//                mBlocked.pop();
+//                return ret;
+//            }
+//            catch (const std::exception& e)
+//            {
+//                this->stop();
+//                op::error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+//                return nullptr;
+//            }
+//        }
         std::shared_ptr<std::vector<std::shared_ptr<op::Datum>>> workProducer()
         {
             try
             {
-                if(mBlocked.empty()) 
-                {
-                    auto datumsPtr = std::make_shared<std::vector<std::shared_ptr<op::Datum>>>();
-                    // Create new datum
-                    datumsPtr->emplace_back();
-                    auto& datum = datumsPtr->back();
-                    datum = std::make_shared<op::Datum>();
-
-                    // Fill datum
-                    datum->cvInputData = getFrame();
-                    datum->cvOutputData = datum->cvInputData;
-                    datum->cameraIntrinsics = mIntrinsics[0];
-                    datum->cameraExtrinsics = mExtrinsics[0];
-                    datum->cameraMatrix = mMatrices[0];
-
-                    // If empty frame -> return nullptr
-                    if (datum->cvInputData.empty())
-                    {
-                        this->stop();
-                        return nullptr;
-                    }
-                    mBlocked.push(datumsPtr);
-                }
-
-                auto ret = mBlocked.front();
-                mBlocked.pop();
-                return ret;
-            
+                // create a new datum
+                auto datumsPtr = std::make_shared<std::vector<std::shared_ptr<op::Datum>>>();
+                datumsPtr->emplace_back();
+                auto& datumPtrl = datumsPtr->back();
+//                auto& datumPtrr = datumsPtr->back();
+                datumPtrl = std::make_shared<op::Datum>();
+//                datumPtrr = std::make_shared<op::Datum>();
+                // Fill datum
+                datumPtrl->name = "left camera";
+                datumPtrl->cvInputData = getFrame(0); 
+                datumPtrl->cvOutputData = datumPtrl->cvInputData;
+                datumPtrl->cameraIntrinsics = mIntrinsics[0];
+                datumPtrl->cameraExtrinsics = mExtrinsics[0];
+                datumPtrl->cameraMatrix = mMatrices[0];
+//                datumPtrr->name = "right camera";
+//                datumPtrr->cvInputData = getFrame(1); 
+//                datumPtrr->cvOutputData = datumPtrr->cvInputData;
+//                datumPtrr->cameraIntrinsics = mIntrinsics[1];
+//                datumPtrr->cameraExtrinsics = mExtrinsics[1];
+//                datumPtrr->cameraMatrix = mMatrices[1];
+                // If empty frame -> return nullptr
+//                if (datumPtrl->cvInputData.empty() || datumPtrr->cvInputData.empty())
+//                {
+//                    this->stop();
+//                    datumsPtr = nullptr;
+//                }
+                return datumsPtr;
+            } 
             catch (const std::exception& e)
             {
                 this->stop();
@@ -139,7 +222,7 @@ void configureWrapper(op::Wrapper& opWrapper)
                 FLAGS_heatmaps_add_PAFs);
         const auto heatMapScaleMode = op::flagsToHeatMapScaleMode(FLAGS_heatmaps_scale);
         // >1 camera view?
-//        const auto multipleView = (FLAGS_3d || FLAGS_3d_views > 1 || FLAGS_flir_camera);
+//        const auto multipleView = (FLAGS_3d || FLAGS_3d_views > 1); //|| FLAGS_flir_camera);
 //        const auto multipleView = (FLAGS_3d);
         const auto multipleView = false;
         // Face and hand detectors
