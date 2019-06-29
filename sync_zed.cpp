@@ -14,7 +14,7 @@ cv::Mat slMat2cvMat(Mat& input);
 class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::shared_ptr<op::Datum>>>>
 {
     public:
-        WUserInput() : mParamReader(std::make_shared<op::CameraParameterReader>())
+        WUserInput(std::vector<uint32_t> cam_ids) : mParamReader(std::make_shared<op::CameraParameterReader>())
         {
             init_params.camera_resolution = RESOLUTION_VGA;
             init_params.camera_fps = 60;
@@ -24,9 +24,9 @@ class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::sh
             new_width = image_size.width;
             new_height = image_size.height;
 
-            cam_ids.push_back(0);
-            cam_ids.push_back(1);
-            cam_ids.push_back(2);
+//            cam_ids.push_back(0);
+//            cam_ids.push_back(1);
+//            cam_ids.push_back(2);
             for(const auto& cam_id : cam_ids) {
                 mCams.emplace_back(std::make_shared<op::WebcamReader>( cam_id ));
             }
@@ -79,11 +79,11 @@ class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::sh
                         datum = std::make_shared<op::Datum>();
 
                         // Fill datum
-                        datum->cvInputData = this->getFrame(0);
+                        datum->cvInputData = this->getFrame(i);
                         datum->cvOutputData = datum->cvInputData;
-                        datum->cameraIntrinsics = mIntrinsics[0];
-                        datum->cameraExtrinsics = mExtrinsics[0];
-                        datum->cameraMatrix = mMatrices[0];
+                        datum->cameraIntrinsics = mIntrinsics[i];
+                        datum->cameraExtrinsics = mExtrinsics[i];
+                        datum->cameraMatrix = mMatrices[i];
 
                         // If empty frame -> return nullptr
                         if (datum->cvInputData.empty())
@@ -91,7 +91,6 @@ class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::sh
                             this->stop();
                             return nullptr;
                         }
-                        return datumsPtr;
                         mBlocked.push(datumsPtr);
                     }
                 }
