@@ -14,7 +14,7 @@ cv::Mat slMat2cvMat(Mat& input);
 class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::shared_ptr<op::Datum>>>>
 {
     public:
-        WUserInput(std::vector<uint32_t> cam_ids) : mParamReader(std::make_shared<op::CameraParameterReader>())
+        WUserInput() : mParamReader(std::make_shared<op::CameraParameterReader>())
         {
             init_params.camera_resolution = RESOLUTION_VGA;
             init_params.camera_fps = 60;
@@ -23,13 +23,13 @@ class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::sh
             sl::Resolution image_size = zed.getResolution();
             new_width = image_size.width;
             new_height = image_size.height;
-
+            std::vector<uint32_t> cam_ids;
 //            cam_ids.push_back(0);
 //            cam_ids.push_back(1);
 //            cam_ids.push_back(2);
-            for(const auto& cam_id : cam_ids) {
-                mCams.emplace_back(std::make_shared<op::WebcamReader>( cam_id ));
-            }
+//            for(const auto& cam_id : cam_ids) {
+//                mCams.emplace_back(std::make_shared<op::WebcamReader>( cam_id ));
+//            }
             mParamReader->readParameters("/home/yurik/Pictures/ZED_calibration/leftandright_califolder/");
             mIntrinsics = mParamReader->getCameraIntrinsics();
             mExtrinsics = mParamReader->getCameraExtrinsics();
@@ -70,6 +70,8 @@ class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::sh
         {
             try
             {
+                wpc++;
+                std::cout<<"workProducer has been called "<<wpc<<" times"<<std::endl;
                 if(mBlocked.empty()) {
                     for (size_t i = 0; i < 2; i++) {
                         auto datumsPtr = std::make_shared<std::vector<std::shared_ptr<op::Datum>>>();
@@ -79,11 +81,14 @@ class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::sh
                         datum = std::make_shared<op::Datum>();
 
                         // Fill datum
-                        datum->cvInputData = this->getFrame(i);
+                        datum->cvInputData = getFrame(i);
                         datum->cvOutputData = datum->cvInputData;
+                        datum->subId = i;
+                        datum->subIdMax = 2 - 1;
                         datum->cameraIntrinsics = mIntrinsics[i];
                         datum->cameraExtrinsics = mExtrinsics[i];
                         datum->cameraMatrix = mMatrices[i];
+                        std::cout<<"the "<<i<<"th"<<" for loop has been called"<<std::endl;
 
                         // If empty frame -> return nullptr
                         if (datum->cvInputData.empty())
@@ -94,7 +99,7 @@ class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::sh
                         mBlocked.push(datumsPtr);
                     }
                 }
-
+//                return mBlocked.back();
                 auto ret = mBlocked.front();
                 mBlocked.pop();
                 return ret;
@@ -108,6 +113,8 @@ class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::sh
         }
 
     private:
+        int wpc = 0;
+        int fc = 0;
         sl::Camera zed;
         sl::InitParameters init_params;
         sl::RuntimeParameters runtime_param;
