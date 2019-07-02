@@ -31,8 +31,8 @@ class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::sh
 //                mCams.emplace_back(std::make_shared<op::WebcamReader>( cam_id ));
 //            }
             mParamReader->readParameters("/home/yurik/Pictures/ZED_calibration/leftandright_califolder/");
-            mIntrinsics = mParamReader->getCameraIntrinsics();
-            mExtrinsics = mParamReader->getCameraExtrinsics();
+//            mIntrinsics = mParamReader->getCameraIntrinsics();
+//            mExtrinsics = mParamReader->getCameraExtrinsics();
             mMatrices = mParamReader->getCameraMatrices();
         }
 
@@ -85,8 +85,8 @@ class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::sh
                         datum->cvOutputData = datum->cvInputData;
                         datum->subId = i;
                         datum->subIdMax = 2 - 1;
-                        datum->cameraIntrinsics = mIntrinsics[i];
-                        datum->cameraExtrinsics = mExtrinsics[i];
+//                        datum->cameraIntrinsics = mIntrinsics[i];
+//                        datum->cameraExtrinsics = mExtrinsics[i];
                         datum->cameraMatrix = mMatrices[i];
                         std::cout<<"the "<<i<<"th"<<" for loop has been called"<<std::endl;
 
