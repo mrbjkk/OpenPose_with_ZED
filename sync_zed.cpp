@@ -84,7 +84,7 @@ class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::sh
                         datum->cvInputData = getFrame(i);
                         datum->cvOutputData = datum->cvInputData;
                         datum->subId = i;
-                        datum->subIdMax = 2 - 1;
+                        datum->subIdMax = 1;
 //                        datum->cameraIntrinsics = mIntrinsics[i];
 //                        datum->cameraExtrinsics = mExtrinsics[i];
                         datum->cameraMatrix = mMatrices[i];
