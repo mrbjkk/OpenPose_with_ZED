@@ -23,16 +23,9 @@ class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::sh
             sl::Resolution image_size = zed.getResolution();
             new_width = image_size.width;
             new_height = image_size.height;
-            std::vector<uint32_t> cam_ids;
-//            cam_ids.push_back(0);
-//            cam_ids.push_back(1);
-//            cam_ids.push_back(2);
-//            for(const auto& cam_id : cam_ids) {
-//                mCams.emplace_back(std::make_shared<op::WebcamReader>( cam_id ));
-//            }
             mParamReader->readParameters("/home/yurik/Pictures/ZED_calibration/leftandright_califolder/");
-//            mIntrinsics = mParamReader->getCameraIntrinsics();
-//            mExtrinsics = mParamReader->getCameraExtrinsics();
+            mIntrinsics = mParamReader->getCameraIntrinsics();
+            mExtrinsics = mParamReader->getCameraExtrinsics();
             mMatrices = mParamReader->getCameraMatrices();
         }
 
@@ -70,38 +63,61 @@ class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::sh
         {
             try
             {
+                // this block processes one frame
+//                wpc++;
+//                std::cout<<"workProducer has been called "<<wpc<<" times"<<std::endl;
+//                auto Datums = std::make_shared<std::vector<std::shared_ptr<op::Datum>>>();
+//                Datums->emplace_back();
+//                // declare datumsPtr
+//                auto& datumsPtr = Datums->back();
+//                // value datumsPtr
+//                datumsPtr = std::make_shared<op::Datum>();
+//                datumsPtr->cvInputData = getFrame(0);
+//                if(wpc % 2 == 0)
+//                {
+//                    datumsPtr->cvInputData = getFrame(0);
+//                }
+//                else
+//                {
+//                    datumsPtr->cvInputData = getFrame(1);
+//                }
+//                datumsPtr->cvOutputData = datumsPtr->cvInputData;
+//                datumsPtr->cameraMatrix = mMatrices[0];
+//                return Datums;
+
                 wpc++;
                 std::cout<<"workProducer has been called "<<wpc<<" times"<<std::endl;
-                if(mBlocked.empty()) {
-                    for (size_t i = 0; i < 2; i++) {
-                        auto datumsPtr = std::make_shared<std::vector<std::shared_ptr<op::Datum>>>();
-                        // Create new datum
-                        datumsPtr->emplace_back();
-                        auto& datum = datumsPtr->back();
-                        datum = std::make_shared<op::Datum>();
+                if (mQueuedElements.empty())
+                {
+                    for (auto i = 0; i < 2; i++)
+                    {
+                        auto Datums = std::make_shared<std::vector<std::shared_ptr<op::Datum>>>();
+                        Datums->emplace_back();
+                        auto& datumsPtr = Datums->back();
+                        datumsPtr = std::make_shared<op::Datum>();
 
-                        // Fill datum
-                        datum->cvInputData = getFrame(i);
-                        datum->cvOutputData = datum->cvInputData;
-                        datum->subId = i;
-                        datum->subIdMax = 1;
-//                        datum->cameraIntrinsics = mIntrinsics[i];
-//                        datum->cameraExtrinsics = mExtrinsics[i];
-                        datum->cameraMatrix = mMatrices[i];
-                        std::cout<<"the "<<i<<"th"<<" for loop has been called"<<std::endl;
+                        //Fill datum
+                        datumsPtr->cvInputData = getFrame(i);
+                        datumsPtr->cvOutputData = datumsPtr->cvInputData;
+                        datumsPtr->subId = i;
+                        datumsPtr->subIdMax = 1;
+                        datumsPtr->cameraMatrix = mMatrices[i];
 
-                        // If empty frame -> return nullptr
-                        if (datum->cvInputData.empty())
+                        if (datumsPtr->cvInputData.empty())
                         {
+                            std::cout<<"if has been called"<<std::endl;
                             this->stop();
                             return nullptr;
                         }
-                        mBlocked.push(datumsPtr);
+                        mQueuedElements.push(Datums);
+                        std::cout<<"queue size in for: "<<mQueuedElements.size()<<std::endl;
                     }
                 }
-//                return mBlocked.back();
-                auto ret = mBlocked.front();
-                mBlocked.pop();
+                std::cout<<"queue size after for: "<<mQueuedElements.size()<<std::endl;
+                auto ret = mQueuedElements.front();
+                std::cout<<"queue size after front: "<<mQueuedElements.size()<<std::endl;
+                mQueuedElements.pop();
+                std::cout<<"queue size after pop: "<<mQueuedElements.size()<<std::endl;
                 return ret;
             }
             catch (const std::exception& e)
@@ -125,7 +141,7 @@ class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::sh
         std::vector<cv::Mat> mExtrinsics;
         std::vector<cv::Mat> mMatrices;
         std::vector<std::shared_ptr<op::WebcamReader>> mCams;
-        std::queue<std::shared_ptr<std::vector<std::shared_ptr<op::Datum>>>> mBlocked;
+        std::queue<std::shared_ptr<std::vector<std::shared_ptr<op::Datum>>>> mQueuedElements;
         std::vector<uint32_t> cam_ids;
 };
 
